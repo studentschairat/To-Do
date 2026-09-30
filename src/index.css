@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --bg: #f4f5f7; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0f1115; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes pop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.pop { animation: pop 0.25s ease-out; }
+.item { transition: opacity 0.25s, transform 0.25s; }
+.leaving { opacity: 0; transform: translateX(24px) scale(0.96); }
