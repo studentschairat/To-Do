@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import TodoItem from './components/TodoItem'
-import { FILTERS, PRIORITIES, PRIORITY_ORDER } from './constants'
+import Stats from './components/Stats'
+import { CATEGORIES, CATEGORY_ORDER, FILTERS, PRIORITIES, PRIORITY_ORDER, addDays } from './constants'
 
 const INITIAL = [
-  { id: 1, text: 'ตัวอย่าง: ส่งรายงานประจำสัปดาห์', done: false, priority: 'high' },
-  { id: 2, text: 'ซื้อของเข้าบ้าน', done: false, priority: 'medium' },
-  { id: 3, text: 'ออกกำลังกาย 30 นาที', done: true, priority: 'low' },
+  { id: 1, text: 'ตัวอย่าง: ส่งรายงานประจำสัปดาห์', done: false, priority: 'high', category: 'work', due: addDays(-1) },
+  { id: 2, text: 'ซื้อของเข้าบ้าน', done: false, priority: 'medium', category: 'shopping', due: addDays(0) },
+  { id: 3, text: 'ออกกำลังกาย 30 นาที', done: true, priority: 'low', category: 'health', due: addDays(0) },
+  { id: 4, text: 'โทรหาครอบครัว', done: false, priority: 'low', category: 'personal', due: addDays(3) },
 ]
 
 export default function App() {
@@ -15,12 +17,16 @@ export default function App() {
   const [priority, setPriority] = useState('medium')
   const [filter, setFilter] = useState('all')
   const [leaving, setLeaving] = useState({})
-  const nextId = useRef(4)
+  const [category, setCategory] = useState('work')
+  const [due, setDue] = useState('')
+  const [catFilter, setCatFilter] = useState('all')
+  const [query, setQuery] = useState('')
+  const nextId = useRef(5)
 
   const add = () => {
     const text = input.trim()
     if (!text) return
-    setTodos((l) => [{ id: nextId.current++, text, done: false, priority }, ...l])
+    setTodos((l) => [{ id: nextId.current++, text, done: false, priority, category, due }, ...l])
     setInput('')
   }
   const toggle = (id) => setTodos((l) => l.map((t) => (t.id === id ? { ...t, done: !t.done } : t)))
@@ -33,6 +39,8 @@ export default function App() {
           : t
       )
     )
+  const setCat = (id, category) => setTodos((l) => l.map((t) => (t.id === id ? { ...t, category } : t)))
+  const setDueOf = (id, due) => setTodos((l) => l.map((t) => (t.id === id ? { ...t, due } : t)))
   const remove = (id) => {
     setLeaving((m) => ({ ...m, [id]: true }))
     setTimeout(() => setTodos((l) => l.filter((t) => t.id !== id)), 250)
@@ -49,14 +57,47 @@ export default function App() {
 
   const remaining = todos.filter((t) => !t.done).length
   const doneCount = todos.length - remaining
-  const shown = todos.filter((t) => filter === 'all' || (filter === 'active' ? !t.done : t.done))
+  const q = query.trim().toLowerCase()
+  const shown = todos.filter(
+    (t) =>
+      (filter === 'all' || (filter === 'active' ? !t.done : t.done)) &&
+      (catFilter === 'all' || t.category === catFilter) &&
+      (!q || t.text.toLowerCase().includes(q))
+  )
+  const countOf = (k) => todos.filter((t) => t.category === k).length
 
   return (
-    <div className="mx-auto w-full max-w-xl px-4 py-8 sm:py-12">
+    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-12">
       <h1 className="mb-6 text-2xl font-bold text-zinc-800 dark:text-zinc-100 sm:text-3xl">
         ✅ สิ่งที่ต้องทำ
       </h1>
 
+      <div className="grid gap-4 md:grid-cols-[14rem_1fr]">
+        <aside className="space-y-4">
+          <Stats todos={todos} />
+          <nav className="rounded-2xl bg-white p-2 shadow-md ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
+            <h2 className="px-2 pb-1 pt-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">หมวดหมู่</h2>
+            {[['all', 'ทั้งหมด', null, todos.length], ...CATEGORY_ORDER.map((k) => [k, CATEGORIES[k].label, CATEGORIES[k].dot, countOf(k)])].map(
+              ([k, label, dot, n]) => (
+                <button
+                  key={k}
+                  onClick={() => setCatFilter(k)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm transition ${
+                    catFilter === k
+                      ? 'bg-indigo-50 font-medium text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300'
+                      : 'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700/50'
+                  }`}
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full ${dot || 'bg-zinc-300 dark:bg-zinc-500'}`} />
+                  {label}
+                  <span className="ml-auto rounded-full bg-zinc-100 px-2 text-xs dark:bg-zinc-700">{n}</span>
+                </button>
+              )
+            )}
+          </nav>
+        </aside>
+
+        <main className="min-w-0">
       <div className="mb-4 rounded-2xl bg-white p-4 shadow-md ring-1 ring-black/5 dark:bg-zinc-800 dark:ring-white/10">
         <div className="flex gap-2">
           <input
@@ -74,8 +115,24 @@ export default function App() {
             <span className="hidden sm:inline">เพิ่ม</span>
           </button>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">ความสำคัญ:</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-transparent px-2 py-1 text-xs text-zinc-700 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"
+          >
+            {CATEGORY_ORDER.map((k) => (
+              <option key={k} value={k}>{CATEGORIES[k].label}</option>
+            ))}
+          </select>
+          <input
+            type="date"
+            value={due}
+            onChange={(e) => setDue(e.target.value)}
+            aria-label="วันกำหนดส่ง"
+            className="rounded-lg border border-zinc-200 bg-transparent px-2 py-1 text-xs text-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+          />
+          <span className="ml-1 text-sm text-zinc-500 dark:text-zinc-400">ความสำคัญ:</span>
           {PRIORITY_ORDER.map((k) => (
             <button
               key={k}
@@ -90,6 +147,16 @@ export default function App() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="relative mb-3">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"><Search size={16} /></span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="ค้นหางาน..."
+          className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-9 pr-3 text-base text-zinc-800 outline-none placeholder:text-zinc-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:ring-indigo-500/30"
+        />
       </div>
 
       <div className="mb-3 flex gap-1 rounded-xl bg-zinc-200/70 p-1 dark:bg-zinc-800">
@@ -118,6 +185,8 @@ export default function App() {
             onDelete={remove}
             onEdit={edit}
             onCycle={cycle}
+            onCategory={setCat}
+            onDue={setDueOf}
           />
         ))}
         {shown.length === 0 && (
@@ -147,6 +216,8 @@ export default function App() {
       <p className="mt-4 text-center text-xs text-zinc-400">
         ดับเบิลคลิกที่ข้อความเพื่อแก้ไข · แตะป้ายเพื่อเปลี่ยนความสำคัญ
       </p>
+        </main>
+      </div>
     </div>
   )
 }

@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Trash2 } from 'lucide-react'
-import { PRIORITIES } from '../constants'
+import { CATEGORIES, CATEGORY_ORDER, PRIORITIES, dueStatus, fmtDate } from '../constants'
 
-export default function TodoItem({ todo, leaving, onToggle, onDelete, onEdit, onCycle }) {
+export default function TodoItem({ todo, leaving, onToggle, onDelete, onEdit, onCycle, onCategory, onDue }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState(todo.text)
   const inputRef = useRef(null)
   const p = PRIORITIES[todo.priority]
+  const c = CATEGORIES[todo.category]
+  const ds = todo.done ? 'upcoming' : dueStatus(todo.due)
+  const dueCls = {
+    overdue: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+    today: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300',
+    upcoming: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300',
+  }[ds || 'upcoming']
+  const dueText = !todo.due ? '+ กำหนดส่ง' : (ds === 'overdue' ? 'เลยกำหนด · ' : ds === 'today' ? 'วันนี้ · ' : '') + fmtDate(todo.due)
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -74,6 +82,25 @@ export default function TodoItem({ todo, leaving, onToggle, onDelete, onEdit, on
             {todo.text}
           </span>
         )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => onCategory(todo.id, CATEGORY_ORDER[(CATEGORY_ORDER.indexOf(todo.category) + 1) % CATEGORY_ORDER.length])}
+            title="กดเพื่อเปลี่ยนหมวดหมู่"
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${c.badge}`}
+          >
+            {c.label}
+          </button>
+          <label className={`relative cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium ${todo.due ? dueCls : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-700'}`}>
+            {dueText}
+            <input
+              type="date"
+              value={todo.due || ''}
+              onChange={(e) => onDue(todo.id, e.target.value)}
+              onClick={(e) => e.currentTarget.showPicker?.()}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </label>
+        </div>
       </div>
 
       <button
